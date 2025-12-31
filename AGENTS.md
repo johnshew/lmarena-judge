@@ -16,6 +16,7 @@
 - Follow the existing section structure (marked with `// ===` separators)
 
 ## Version Management
+- Only commit when the developer explicitly asks (e.g., "git commit")
 - Update version on each git commit
 - Keep VERSION constant and @version in userscript header in sync
 - Both are at the top of lmarena-judge.js
