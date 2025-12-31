@@ -18,7 +18,7 @@
     // CONFIGURATION
     // =============================================================================
 
-    const VERSION = '4.0';
+    const VERSION = '4.1';
 
     const CONFIG = {
         // Model name prefixes for detection
@@ -120,11 +120,18 @@
     // MODEL DETECTION
     // =============================================================================
 
+    // Regex to match "Assistant A" or "Assistant B" labels
+    const ASSISTANT_LABEL_REGEX = /^Assistant\s+([AB])\b/i;
+
     function isModelName(text) {
         if (!text) return false;
         const firstWord = text.trim().split(/\s/)[0].toLowerCase();
         const firstLine = text.trim().split('\n')[0];
         return CONFIG.modelPrefixes.some(p => firstWord.startsWith(p)) && MODEL_REGEX.test(firstLine);
+    }
+
+    function isAssistantLabel(text) {
+        return ASSISTANT_LABEL_REGEX.test(text?.trim() || '');
     }
 
     function isThoughtPrefix(text) {
@@ -136,12 +143,18 @@
 
         const lines = (column.innerText?.trim() || '').split('\n');
 
-        // Check first 5 lines for model name
+        // Check first 5 lines for model name or assistant label
         for (let i = 0; i < Math.min(5, lines.length); i++) {
             const line = lines[i].trim();
             if (!line || isThoughtPrefix(line)) continue;
-            const match = line.match(MODEL_REGEX);
-            if (match) return match[1];
+
+            // First try actual model name
+            const modelMatch = line.match(MODEL_REGEX);
+            if (modelMatch) return modelMatch[1];
+
+            // Then try "Assistant A/B" label
+            const assistantMatch = line.match(ASSISTANT_LABEL_REGEX);
+            if (assistantMatch) return `Model ${assistantMatch[1]}`;
         }
 
         // Fallback: check if first meaningful line looks like a model name
@@ -196,7 +209,7 @@
         let startIndex = 0;
         for (let i = 0; i < Math.min(5, lines.length); i++) {
             const line = lines[i].trim();
-            if (isModelName(line) || isThoughtPrefix(line) || !line) {
+            if (isModelName(line) || isAssistantLabel(line) || isThoughtPrefix(line) || !line) {
                 startIndex = i + 1;
             } else {
                 break;
@@ -274,11 +287,11 @@
             if (hasUserBubble) continue;
 
             const text0 = children[0]?.innerText?.slice(0, 150) || '';
-            const isModel0 = isModelName(text0) || isThoughtPrefix(text0);
+            const isModel0 = isModelName(text0) || isAssistantLabel(text0) || isThoughtPrefix(text0);
 
             if (children.length === 2) {
                 const text1 = children[1]?.innerText?.slice(0, 150) || '';
-                const isModel1 = isModelName(text1) || isThoughtPrefix(text1);
+                const isModel1 = isModelName(text1) || isAssistantLabel(text1) || isThoughtPrefix(text1);
                 const len0 = children[0]?.innerText?.length || 0;
                 const len1 = children[1]?.innerText?.length || 0;
 
@@ -341,10 +354,10 @@
                 if (turn) {
                     const isHiddenB = !turn.responseB || turn.responseB.includes('[HIDDEN');
                     if (isHiddenB) {
-                        section += `\n\n[NOTE: This turn was already voted on. Model B's response is hidden.]`;
+                        section += `\n\n[NOTE: This turn was already voted on. The second model's response is hidden.]`;
                     }
-                    section += `\n\n### Turn ${i + 1} - Model A (${turn.modelA}) Response\n${turn.responseA || '[NO RESPONSE]'}`;
-                    section += `\n\n### Turn ${i + 1} - Model B (${turn.modelB}) Response\n${turn.responseB || '[NO RESPONSE]'}`;
+                    section += `\n\n### Turn ${i + 1} - ${turn.modelA} Response\n${turn.responseA || '[NO RESPONSE]'}`;
+                    section += `\n\n### Turn ${i + 1} - ${turn.modelB} Response\n${turn.responseB || '[NO RESPONSE]'}`;
                 }
                 parts.push(section);
             }
@@ -372,19 +385,21 @@ ${historySection}## ${turnLabel}
 ${currentPrompt}
 """
 
-## Model A (${modelA}) Response
+## Model Response from ${modelA}
 """
 ${responseA || '[NO RESPONSE]'}
 """
 
-## Model B (${modelB}) Response
+## Model Response from ${modelB}
 """
 ${responseB || '[NO RESPONSE]'}
 """${incompleteNote}
 
 ## Your Evaluation Task
 
-**Winner**: State "A" or "B" or "Tie" (ties should be rare)
+**Winner**: State winner ${modelA}, ${modelB}, or "Tie" if equal. 
+
+**Provide a concise justification (2-4 sentences) focusing on key differences.
 
 **Critical Analysis**: Explain precisely why, identifying:
 - Factual errors or hallucinations in either response
@@ -398,7 +413,7 @@ ${responseB || '[NO RESPONSE]'}
 - Which had more original insight vs. generic answers?
 - Which was better structured and clearer?
 
-**Prompt Improvement**: Rewrite the original prompt to be 5-10x more effective at getting the superior behavior you observed. Explain your changes.`;
+**Prompt Improvement**: Rewrite the original prompt to be 5-10x more effective at getting the superior behavior you observed. But don't loose any critical guidance.  Explain your changes.`;
     }
 
     // =============================================================================
@@ -482,7 +497,7 @@ ${responseB || '[NO RESPONSE]'}
 
         // Judge button
         const judgeBtn = document.createElement('button');
-        judgeBtn.textContent = 'Judge';
+        judgeBtn.textContent = `Judge v${VERSION}`;
         judgeBtn.style.cssText = buttonStyle + 'background:#6366f1;';
 
         judgeBtn.addEventListener('click', () => {
