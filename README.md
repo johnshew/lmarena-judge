@@ -1,8 +1,5 @@
 # LMArena Battle Judge
 
-**Version:** 4.6  
-**License:** MIT
-
 A Tampermonkey userscript that extracts side-by-side LLM battle responses from [lmarena.ai](https://lmarena.ai) and generates a structured evaluation prompt for rigorous comparison.
 
 ## Why This Is Useful
@@ -12,7 +9,7 @@ LMArena lets you compare AI models side-by-side, but the built-in voting is limi
 - **Rigorous evaluation** — Generate a structured prompt that asks an external LLM to analyze both responses for factual accuracy, reasoning quality, and completeness
 - **Document your comparisons** — The judge prompt captures the full context (prompts + responses) for reproducible evaluations
 - **Multi-turn support** — Full conversation history is included, so the judge LLM has complete context
-- **Clean extraction** — Automatically strips thinking blocks, citations from search models, and other artifacts that would clutter the evaluation
+- **Clean extraction** — Automatically strips thinking blocks and inlines citation URLs for better LLM analysis
 
 ### Example Workflow
 
@@ -57,11 +54,12 @@ The script automatically:
 
 ## What Gets Extracted
 
-The script cleans response text by removing:
-- **Thinking blocks** — `<details>`, reasoning traces, thought sections
-- **Citation artifacts** — `[1]`, `[2]`, "Sources" sections, URL lists (from search models)
-- **Hidden elements** — Collapsed or display:none content
-- **User bubbles** — Prevents prompt text from leaking into responses
+The script cleans response text by:
+- **Removing thinking blocks** — `<details>`, reasoning traces, thought sections
+- **Inlining citation URLs** — `[1]` links become `(https://...)` so judge LLMs can evaluate source quality
+- **Removing redundant Sources sections** — Cleans up duplicate URL lists at the end of responses
+- **Stripping hidden elements** — Collapsed or display:none content
+- **Excluding user bubbles** — Prevents prompt text from leaking into responses
 
 ## Troubleshooting
 
@@ -100,7 +98,7 @@ LMArena is built with Next.js/React + Tailwind CSS. The script uses partial attr
 
 ```json
 {
-  "meta": { "version": "4.6", "timestamp": "...", "url": "..." },
+  "meta": { "version": "4.7", "timestamp": "...", "url": "..." },
   "summary": { "completeTurns": 2, "votedTurns": 0, "promptsFound": 2 },
   "currentEval": { "turnIndex": 1, "modelA": "claude-3.5-sonnet", "modelB": "gpt-4o" },
   "prompts": ["User prompt 1...", "User prompt 2..."],
