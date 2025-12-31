@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LMArena Battle Judge
 // @namespace    http://tampermonkey.net/
-// @version      4.0
+// @version      4.2
 // @description  Extract LMArena battle responses and generate judge prompt.
 // @match        *://lmarena.ai/*
 // @run-at       document-end
@@ -18,7 +18,7 @@
     // CONFIGURATION
     // =============================================================================
 
-    const VERSION = '4.1';
+    const VERSION = '4.2';
 
     const CONFIG = {
         // Model name prefixes for detection
