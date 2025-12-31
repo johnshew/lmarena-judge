@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         LMArena Battle Judge
+// @name         LMArena Battle Judge (Generates a new prompt to evaluate a battle)
 // @namespace    http://tampermonkey.net/
-// @version      4.5
-// @description  Extract LMArena battle responses and generate judge prompt.
+// @version      4.6
+// @description  One-click extraction of side-by-side battle responses into a structured evaluation prompt. Captures multi-turn conversation history, strips thinking blocks and citations, identifies models, and generates a ready-to-paste judge prompt for rigorous LLM comparison.
 // @match        *://lmarena.ai/*
 // @run-at       document-end
 // @grant        none
@@ -18,7 +18,7 @@
     // CONFIGURATION
     // =============================================================================
 
-    const VERSION = '4.5';
+    const VERSION = '4.6';
 
     const CONFIG = {
         // Model name prefixes for detection
