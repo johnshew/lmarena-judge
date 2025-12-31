@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         LMArena Battle Judge (Generates a new prompt to evaluate a battle)
 // @namespace    http://tampermonkey.net/
-// @version      4.6
-// @description  One-click extraction of side-by-side battle responses into a structured evaluation prompt. Captures multi-turn conversation history, strips thinking blocks and citations, identifies models, and generates a ready-to-paste judge prompt for rigorous LLM comparison.
+// @version      4.7
+// @description  One-click extraction of side-by-side battle responses into a structured evaluation prompt. Captures multi-turn conversation history, strips thinking blocks, inlines citation URLs, identifies models, and generates a ready-to-paste judge prompt for rigorous LLM comparison.
 // @match        *://lmarena.ai/*
 // @run-at       document-end
 // @grant        none
@@ -19,7 +19,7 @@
     // CONFIGURATION
     // =============================================================================
 
-    const VERSION = '4.6';
+    const VERSION = '4.7';
 
     const CONFIG = {
         // Model name prefixes for detection
@@ -65,14 +65,38 @@
 
     const log = (...args) => console.log(`[LMArena Judge v${VERSION}]`, ...args);
 
-    /** Strip citation artifacts from search model outputs */
-    function stripCitations(text) {
+    /** Process citation links by inlining URLs for LLM context */
+    function inlineCitationLinks(element) {
+        if (!element) return;
+        
+        // Find all links that look like citations (contain [number] or are numbered references)
+        const links = element.querySelectorAll('a[href]');
+        links.forEach(link => {
+            const text = link.textContent?.trim() || '';
+            const href = link.getAttribute('href') || '';
+            
+            // Skip empty or javascript links
+            if (!href || href.startsWith('javascript:') || href === '#') return;
+            
+            // Check if this is a citation link (numbered like [1] or just a number)
+            const isCitation = /^\[?\d+\]?$/.test(text);
+            
+            if (isCitation && href.startsWith('http')) {
+                // Replace citation with inline URL
+                link.textContent = `(${href})`;
+            } else if (href.startsWith('http') && !text.includes(href)) {
+                // For other links, append URL if not already visible
+                link.textContent = `${text} (${href})`;
+            }
+        });
+    }
+
+    /** Clean up citation artifacts from text */
+    function cleanCitationArtifacts(text) {
         if (!text) return '';
         return text
-            .replace(/\[\d+\]/g, '')                       // [1], [2], etc.
-            .replace(/(\.\s*)\d+(\s|$)/g, '$1$2')          // trailing citation numbers
-            .replace(/\n*Sources\s*\n[\s\S]*$/i, '')       // "Sources" section
-            .replace(/\n\d+\s+https?:\/\/[^\n]+/g, '')     // numbered URL lines
+            .replace(/\n*Sources\s*\n[\s\S]*$/i, '')       // "Sources" section at end
+            .replace(/\n\d+\s+https?:\/\/[^\n]+/g, '')     // numbered URL lines (duplicates)
             .replace(/\n{3,}/g, '\n\n')
             .trim();
     }
@@ -192,6 +216,9 @@
             } catch { /* invalid selector */ }
         }
 
+        // Inline citation URLs before extracting text
+        inlineCitationLinks(clone);
+
         // Extract from prose elements
         const proseElements = clone.querySelectorAll(CONFIG.selectors.prose);
         if (proseElements.length > 0) {
@@ -201,7 +228,7 @@
 
             const deduplicated = deduplicateTexts(texts);
             if (deduplicated.length > 0) {
-                return stripCitations(deduplicated.join('\n\n'));
+                return cleanCitationArtifacts(deduplicated.join('\n\n'));
             }
         }
 
@@ -217,7 +244,7 @@
             }
         }
 
-        return stripCitations(lines.slice(startIndex).join('\n').trim());
+        return cleanCitationArtifacts(lines.slice(startIndex).join('\n').trim());
     }
 
     // Cache for extracted column text
