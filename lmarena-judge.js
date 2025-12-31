@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LMArena Battle Judge
 // @namespace    http://tampermonkey.net/
-// @version      4.4
+// @version      4.5
 // @description  Extract LMArena battle responses and generate judge prompt.
 // @match        *://lmarena.ai/*
 // @run-at       document-end
@@ -18,7 +18,7 @@
     // CONFIGURATION
     // =============================================================================
 
-    const VERSION = '4.4';
+    const VERSION = '4.5';
 
     const CONFIG = {
         // Model name prefixes for detection
@@ -340,6 +340,13 @@
         const completeTurns = findAllTurns().filter(t => t.type === 'complete').length;
         const currentPrompt = prompts[turnIndex] || '[NO PROMPT DETECTED]';
 
+        // Detect if models changed between turns
+        const modelsChanged = allTurnsData?.some((turn, i) => {
+            if (i === 0 || i >= turnIndex) return false;
+            const prev = allTurnsData[i - 1];
+            return turn.modelA !== prev.modelA || turn.modelB !== prev.modelB;
+        });
+
         // Build conversation history for multi-turn
         let historySection = '';
         if (turnIndex > 0 && allTurnsData?.length > 0) {
@@ -363,7 +370,11 @@
             }
 
             if (parts.length > 0) {
-                historySection = `## Full Conversation History\n"""\n${parts.join('\n\n---\n\n')}\n"""\n\n`;
+                let historyNote = '';
+                if (modelsChanged) {
+                    historyNote = '\n_Note: Different models responded in earlier turns. The history below is for context only._\n';
+                }
+                historySection = `## Full Conversation History${historyNote}\n"""\n${parts.join('\n\n---\n\n')}\n"""\n\n`;
             }
         }
 
@@ -396,6 +407,8 @@ ${responseB || '[NO RESPONSE]'}
 """${incompleteNote}
 
 ## Your Evaluation Task
+
+**Evaluate**: ${modelA} vs ${modelB} on Turn ${turnIndex + 1} only. Prior turns provide context but are not being judged.
 
 **Winner**: State winner ${modelA}, ${modelB}, or "Tie".
 - Choose "Tie" when both models largely agree on the facts and key conclusions.
