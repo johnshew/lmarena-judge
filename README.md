@@ -18,7 +18,7 @@ LMArena lets you compare AI models side-by-side, but the built-in voting is limi
 
 1. Run a battle on LMArena between two models
 2. Click **Judge** to copy the evaluation prompt
-3. Paste the prompt into LMArena (to have two models assess the result) or paste into your preferred Claude, Gemini, OpenAI, or other model as your preferred judge LLM
+3. Paste into another LMArena battle (to have two models judge), or into Claude, Gemini, GPT, or your preferred LLM
 4. Get a detailed comparison with factual analysis, not just a gut vote
 
 ## Installation
