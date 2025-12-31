@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LMArena Battle Judge
 // @namespace    http://tampermonkey.net/
-// @version      4.2
+// @version      4.3
 // @description  Extract LMArena battle responses and generate judge prompt.
 // @match        *://lmarena.ai/*
 // @run-at       document-end
@@ -18,7 +18,7 @@
     // CONFIGURATION
     // =============================================================================
 
-    const VERSION = '4.2';
+    const VERSION = '4.3';
 
     const CONFIG = {
         // Model name prefixes for detection
@@ -397,12 +397,14 @@ ${responseB || '[NO RESPONSE]'}
 
 ## Your Evaluation Task
 
-**Winner**: State winner ${modelA}, ${modelB}, or "Tie" if equal. 
+**Winner**: State winner ${modelA}, ${modelB}, or "Tie".
+- Choose "Tie" when both models largely agree on the facts and key conclusions.
+- Prioritize **factual correctness** above all else—good structure without a factual basis is useless.
 
-**Provide a concise justification (2-4 sentences) focusing on key differences.
+**Justification**: Provide a concise justification (2-4 sentences) focusing on key differences.
 
 **Critical Analysis**: Explain precisely why, identifying:
-- Factual errors or hallucinations in either response
+- Factual errors or hallucinations in either response (attempt to verify claims where possible)
 - Logical flaws or gaps in reasoning
 - Missing information the prompt requested
 - Unnecessary verbosity or filler
@@ -413,7 +415,7 @@ ${responseB || '[NO RESPONSE]'}
 - Which had more original insight vs. generic answers?
 - Which was better structured and clearer?
 
-**Prompt Improvement**: Rewrite the original prompt to be 5-10x more effective at getting the superior behavior you observed. But don't loose any critical guidance.  Explain your changes.`;
+**Prompt Improvement** (Optional): If the original user prompt has significant issues that may have confused the models or led to poor responses, suggest a revised prompt that would be more effective. Explain your changes.`;
     }
 
     // =============================================================================
