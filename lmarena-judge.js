@@ -6,6 +6,7 @@
 // @match        *://lmarena.ai/*
 // @run-at       document-end
 // @grant        none
+// @license      MIT
 // ==/UserScript==
 
 // NOTE: @grant none disables Tampermonkey's sandbox to allow navigator.clipboard API access.
