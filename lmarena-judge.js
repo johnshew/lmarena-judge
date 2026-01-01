@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LMArena Battle Judge (Generates a new prompt to evaluate a battle)
 // @namespace    http://tampermonkey.net/
-// @version      4.8
+// @version      4.9
 // @description  One-click extraction of side-by-side battle responses into a structured evaluation prompt. Captures multi-turn conversation history, strips thinking blocks, inlines citation URLs, identifies models, and generates a ready-to-paste judge prompt for rigorous LLM comparison.
 // @match        *://lmarena.ai/*
 // @run-at       document-end
@@ -19,7 +19,7 @@
     // CONFIGURATION
     // =============================================================================
 
-    const VERSION = '4.8';
+    const VERSION = '4.9';
 
     const CONFIG = {
         // Model name prefixes for detection
@@ -132,7 +132,7 @@
             const session = await LanguageModel.create({
                 initialPrompts: [{
                     role: 'system',
-                    content: 'Create a short title for this that is no more than 5 words long. Output only the title, nothing else.'
+                    content: 'Create a concise title (5 words max) summarizing the user query. Output only the title text with no quotes, punctuation, or explanation. Use simple, clear words.'
                 }]
             });
 
