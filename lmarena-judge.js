@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LMArena Battle Judge (Generates a new prompt to evaluate a battle)
 // @namespace    http://tampermonkey.net/
-// @version      4.12
+// @version      4.13
 // @description  One-click extraction of side-by-side battle responses into a structured evaluation prompt. Captures multi-turn conversation history, strips thinking blocks, inlines citation URLs, identifies models, and generates a ready-to-paste judge prompt for rigorous LLM comparison.
 // @match        *://lmarena.ai/*
 // @run-at       document-end
@@ -19,7 +19,7 @@
     // CONFIGURATION
     // =============================================================================
 
-    const VERSION = '4.12';
+    const VERSION = '4.13';
 
     const CONFIG = {
         // CSS selectors
@@ -119,18 +119,30 @@
             const session = await LanguageModel.create({
                 initialPrompts: [{
                     role: 'system',
-                    content: 'Create a concise title (5 words max) summarizing the user query. Output only the title text with no quotes, punctuation, or explanation. Use simple, clear words.'
+                    content: 'You are a title generator. When given text between <text> tags, output ONLY a 3-5 word title summarizing that text. No explanation, no quotes, just the title.'
                 }]
             });
 
-            // Generate title
-            const title = await session.prompt(truncatedPrompt);
+            // Generate title - wrap the user content clearly so the SLM doesn't treat it as instructions
+            const title = await session.prompt(`<text>${truncatedPrompt}</text>`);
 
             // Clean up session
             session.destroy();
 
-            // Clean up the result (trim, remove quotes if wrapped)
-            const cleaned = title?.trim().replace(/^["']|["']$/g, '').trim();
+            // Clean up the result: take only first line, limit to ~50 chars, remove quotes
+            let cleaned = title?.trim() || '';
+            
+            // Take only first line (model may output multiple lines)
+            cleaned = cleaned.split('\n')[0].trim();
+            
+            // Remove quotes if wrapped
+            cleaned = cleaned.replace(/^["']|["']$/g, '').trim();
+            
+            // Limit to first ~50 characters, breaking at word boundary
+            if (cleaned.length > 50) {
+                cleaned = cleaned.slice(0, 50).replace(/\s+\S*$/, '').trim();
+            }
+            
             return cleaned || null;
 
         } catch (err) {
