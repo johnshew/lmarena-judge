@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         LMArena Battle Judge (Generates a new prompt to evaluate a battle)
 // @namespace    http://tampermonkey.net/
-// @version      4.11
+// @version      4.12
 // @description  One-click extraction of side-by-side battle responses into a structured evaluation prompt. Captures multi-turn conversation history, strips thinking blocks, inlines citation URLs, identifies models, and generates a ready-to-paste judge prompt for rigorous LLM comparison.
 // @match        *://lmarena.ai/*
 // @run-at       document-end
@@ -19,16 +19,9 @@
     // CONFIGURATION
     // =============================================================================
 
-    const VERSION = '4.11';
+    const VERSION = '4.12';
 
     const CONFIG = {
-        // Model name prefixes for detection
-        modelPrefixes: [
-            'claude', 'grok', 'gpt', 'gemini', 'llama', 'mistral', 'qwen',
-            'deepseek', 'o1', 'o3', 'o4-mini', 'chatgpt', 'command', 'dbrx',
-            'phi', 'yi', 'solar', 'palm', 'codestral', 'pixtral', 'nemotron'
-        ],
-
         // CSS selectors
         selectors: {
             responseContainer: '[class*="flex"][class*="-ml-4"]',
@@ -52,12 +45,6 @@
         buttonContainerId: 'lmarena-judge-btn',
         debounceMs: 500
     };
-
-    // Build model regex from prefixes
-    const MODEL_REGEX = new RegExp(
-        `^((?:${CONFIG.modelPrefixes.join('|')})[\\w\\-\\.]*(?:-thinking)?(?:-\\d+k)?)`,
-        'i'
-    );
 
     // =============================================================================
     // UTILITIES
@@ -199,11 +186,16 @@
     // Regex to match "Assistant A" or "Assistant B" labels
     const ASSISTANT_LABEL_REGEX = /^Assistant\s+([AB])\b/i;
 
+    // Pattern for model names: alphanumeric with hyphens/dots, no spaces, reasonable length
+    // Examples: gpt-4o, claude-3.5-sonnet, ppl-sonar-pro-high, gemini-2.5-pro-grounding
+    const MODEL_NAME_PATTERN = /^[a-zA-Z][\w\-\.]*[\w]$/;
+
     function isModelName(text) {
         if (!text) return false;
-        const firstWord = text.trim().split(/\s/)[0].toLowerCase();
-        const firstLine = text.trim().split('\n')[0];
-        return CONFIG.modelPrefixes.some(p => firstWord.startsWith(p)) && MODEL_REGEX.test(firstLine);
+        const firstLine = text.trim().split('\n')[0].trim();
+        // Model names are typically short identifiers with hyphens/dots, no spaces
+        return firstLine.length > 2 && firstLine.length < 60 && 
+               !firstLine.includes(' ') && MODEL_NAME_PATTERN.test(firstLine);
     }
 
     function isAssistantLabel(text) {
@@ -224,20 +216,13 @@
             const line = lines[i].trim();
             if (!line || isThoughtPrefix(line)) continue;
 
-            // First try actual model name
-            const modelMatch = line.match(MODEL_REGEX);
-            if (modelMatch) return modelMatch[1];
-
-            // Then try "Assistant A/B" label
+            // Check for "Assistant A/B" label
             const assistantMatch = line.match(ASSISTANT_LABEL_REGEX);
             if (assistantMatch) return `Model ${assistantMatch[1]}`;
-        }
 
-        // Fallback: check if first meaningful line looks like a model name
-        const firstLine = lines.find(l => l.trim() && !isThoughtPrefix(l))?.trim() || '';
-        if (/^[\w\-\.]+(-\d+k)?$/i.test(firstLine) && firstLine.length < 50) {
-            if (CONFIG.modelPrefixes.some(p => firstLine.toLowerCase().startsWith(p))) {
-                return firstLine;
+            // Check if line looks like a model name (short identifier with hyphens/dots)
+            if (MODEL_NAME_PATTERN.test(line) && line.length < 60) {
+                return line;
             }
         }
 
@@ -420,7 +405,7 @@
         const currentPrompt = prompts[turnIndex] || '[NO PROMPT DETECTED]';
 
         // Build title line if we have one
-        const titleLine = generatedTitle ? `# ${generatedTitle}\n\n` : '';
+        const titleLine = generatedTitle ? `${generatedTitle}\n\n` : '';
 
         // Detect if models changed between turns
         const modelsChanged = allTurnsData?.some((turn, i) => {
